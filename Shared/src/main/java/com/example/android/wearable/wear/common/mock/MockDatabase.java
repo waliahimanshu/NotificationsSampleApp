@@ -434,6 +434,7 @@ public final class MockDatabase {
             Person participant2 =
                     new Person.Builder()
                             .setName("Wendy Weather")
+                            .setBot(false)
                             .setKey("2233221122")
                             .setUri("tel:2233221122")
                             .setIcon(IconCompat.createWithResource(context, R.drawable.wendy_wonda))

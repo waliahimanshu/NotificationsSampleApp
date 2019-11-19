@@ -143,7 +143,46 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             MESSAGING_STYLE -> generateMessagingStyleNotification()
 
             MEDIA_STYLE -> generateMediaStyleNotification()
+
+            PROGRESS_STYLE -> generateProgressTemplate()
         }// continue below
+    }
+
+    private fun generateProgressTemplate() {
+        val mediaStyleData = MockDatabase.getMediaStyleData()
+        val notificationChannelId = NotificationUtil.createNotificationChannel(this, mediaStyleData)
+
+        val builder = NotificationCompat.Builder(this,
+                notificationChannelId).apply {
+            setContentTitle("Picture Download")
+            setContentText("Download in progress")
+            setSmallIcon(R.drawable.ic_launcher)
+            setPriority(NotificationCompat.PRIORITY_LOW)
+        }
+        val PROGRESS_MAX = 100
+        val PROGRESS_CURRENT = 0
+        NotificationManagerCompat.from(this).apply {
+            // Issue the initial notification with zero progress
+            builder.setProgress(PROGRESS_MAX, PROGRESS_CURRENT, false)
+            notify(NOTIFICATION_ID, builder.build())
+
+            // Do the job here that tracks the progress.
+            // Usually, this should be in a
+            // worker thread
+            // To show progress, update PROGRESS_CURRENT and update the notification with:
+            // builder.setProgress(PROGRESS_MAX, PROGRESS_CURRENT, false);
+            // notificationManager.notify(notificationId, builder.build());
+
+            for(i in 0..100) {
+                builder.setProgress(100, i, false)
+
+                notify(NOTIFICATION_ID, builder.build())
+            }
+            // When done, update the notification one more time to remove the progress bar
+            builder.setContentText("Download complete")
+                    .setProgress(0, 0, false)
+            notify(NOTIFICATION_ID, builder.build())
+        }
     }
 
     private fun generateMediaStyleNotification() {
@@ -922,10 +961,19 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         private val INBOX_STYLE = "INBOX_STYLE"
         private val MESSAGING_STYLE = "MESSAGING_STYLE"
         private val MEDIA_STYLE = "MEDIA_STYLE"
+        private val PROGRESS_STYLE = "PROGRESS_STYLE"
 
         // Collection of notification styles to back ArrayAdapter for Spinner.
-        private val NOTIFICATION_STYLES = arrayOf(BIG_TEXT_STYLE, BIG_PICTURE_STYLE, INBOX_STYLE, MESSAGING_STYLE, MEDIA_STYLE)
+        private val NOTIFICATION_STYLES = arrayOf(
+                BIG_TEXT_STYLE, BIG_PICTURE_STYLE, INBOX_STYLE, MESSAGING_STYLE, MEDIA_STYLE, PROGRESS_STYLE)
 
-        private val NOTIFICATION_STYLES_DESCRIPTION = arrayOf("Demos reminder type app using BIG_TEXT_STYLE", "Demos social type app using BIG_PICTURE_STYLE + inline notification response", "Demos email type app using INBOX_STYLE", "Demos messaging app using MESSAGING_STYLE + inline notification responses", "Demos messaging app using MEDIA_STYLE")
+        private val NOTIFICATION_STYLES_DESCRIPTION = arrayOf(
+                "Demos reminder type app using BIG_TEXT_STYLE",
+                "Demos social type app using BIG_PICTURE_STYLE + inline notification response",
+                "Demos email type app using INBOX_STYLE",
+                "Demos messaging app using MESSAGING_STYLE + inline notification responses",
+                "Demos messaging app using MEDIA_STYLE",
+                "Demos messaging app using PROGRESS_STYLE"
+        )
     }
 }
