@@ -1,18 +1,3 @@
-/*
-Copyright 2016 The Android Open Source Project
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
 package com.example.android.wearable.wear.wearnotifications
 
 import android.app.Notification
@@ -26,38 +11,19 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
-import android.widget.RelativeLayout
-import android.widget.Spinner
-import android.widget.TextView
-
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationCompat.Action
-import androidx.core.app.NotificationCompat.BigPictureStyle
-import androidx.core.app.NotificationCompat.BigTextStyle
-import androidx.core.app.NotificationCompat.InboxStyle
-import androidx.core.app.NotificationCompat.MessagingStyle
+import androidx.core.app.NotificationCompat.*
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.app.Person
 import androidx.core.app.RemoteInput
 import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
-
 import com.example.android.wearable.wear.common.mock.MockDatabase
 import com.example.android.wearable.wear.common.util.NotificationUtil
-import com.example.android.wearable.wear.wearnotifications.handlers.BigPictureSocialIntentService
-import com.example.android.wearable.wear.wearnotifications.handlers.BigPictureSocialMainActivity
-import com.example.android.wearable.wear.wearnotifications.handlers.BigTextIntentService
-import com.example.android.wearable.wear.wearnotifications.handlers.BigTextMainActivity
-import com.example.android.wearable.wear.wearnotifications.handlers.InboxMainActivity
-import com.example.android.wearable.wear.wearnotifications.handlers.MessagingIntentService
-import com.example.android.wearable.wear.wearnotifications.handlers.MessagingMainActivity
+import com.example.android.wearable.wear.wearnotifications.handlers.*
 import com.google.android.material.snackbar.Snackbar
-
-import java.util.ArrayList
-import java.util.Random
+import java.util.*
 
 /**
  * The Activity demonstrates several popular Notification.Style examples along with their best
@@ -145,7 +111,73 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             MEDIA_STYLE -> generateMediaStyleNotification()
 
             PROGRESS_STYLE -> generateProgressTemplate()
+
+            BUNDLED_NOTIFICATION -> generateBundledNotification()
+
+
         }// continue below
+    }
+
+    private fun generateBundledNotification() {
+        val mediaStyleData = MockDatabase.getMediaStyleData()
+        val notificationChannelId = NotificationUtil.createNotificationChannel(this, mediaStyleData)
+
+        val builder = NotificationCompat.Builder(this, notificationChannelId).apply {
+            setSmallIcon(R.drawable.ic_launcher)
+            .setLargeIcon(BitmapFactory.decodeResource(
+                            resources,
+                            R.drawable.ic_person_black_48dp))
+                    .priority = NotificationCompat.PRIORITY_LOW
+            color = ContextCompat.getColor(applicationContext, R.color.colorPrimary)
+
+        }
+
+        NotificationManagerCompat.from(this).apply {
+
+            val groupKey = "key"
+
+            for (i in 0..5) {
+                builder.setContentTitle("Notification :$i")
+                builder.setContentText("Notification content :$i")
+                builder.setGroup(groupKey)
+                builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+                notify(Random().nextInt(100), builder.build())
+            }
+        }
+
+        //   is the only notification that appears on
+        //   Marshmallow and lower devices and should (you guessed it)
+        //   summarize all of the individual notifications.
+        //   This is an opportune time to use the InboxStyle,
+        //   although using it is not a requirement.
+        //   On Android N and higher devices, some information
+        //   (such as the subtext, content intent, and delete intent)
+        //   is extracted from the summary notification to produce the
+        //   collapsed notification for the bundled notifications so you
+        //   should continue to generate a summary notification on all API levels.
+        NotificationManagerCompat.from(this).apply {
+
+            val groupKey = "key"
+
+            val summaryId = (groupKey.hashCode())
+
+            builder.setSmallIcon(R.drawable.ic_launcher)
+                    .setLargeIcon(BitmapFactory.decodeResource(
+                            resources,
+                            R.drawable.ic_person_black_48dp))
+                    .priority = NotificationCompat.PRIORITY_LOW
+            builder.color = ContextCompat.getColor(applicationContext, R.color.colorPrimary)
+            builder.setContentTitle("Summary Title")
+            builder.setContentText("Summary Content")
+            builder.setGroup(groupKey)
+            builder.setGroupSummary(true)
+            builder.setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_SUMMARY)
+            builder.setStyle(InboxStyle())
+            notify(summaryId, builder.build())
+
+
+        }
+
     }
 
     private fun generateProgressTemplate() {
@@ -173,7 +205,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             // builder.setProgress(PROGRESS_MAX, PROGRESS_CURRENT, false);
             // notificationManager.notify(notificationId, builder.build());
 
-            for(i in 0..100) {
+            for (i in 0..100) {
                 builder.setProgress(100, i, false)
 
                 notify(NOTIFICATION_ID, builder.build())
@@ -631,7 +663,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         val notificationChannelId = NotificationUtil.createNotificationChannel(this, inboxStyleEmailAppData)
 
         // 2. Build the INBOX_STYLE.
-        val inboxStyle = NotificationCompat.InboxStyle()
+        val inboxStyle = InboxStyle()
                 // This title is slightly different than regular title, since I know INBOX_STYLE is
                 // available.
                 .setBigContentTitle(inboxStyleEmailAppData.bigContentTitle)
@@ -962,10 +994,18 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         private val MESSAGING_STYLE = "MESSAGING_STYLE"
         private val MEDIA_STYLE = "MEDIA_STYLE"
         private val PROGRESS_STYLE = "PROGRESS_STYLE"
+        private val BUNDLED_NOTIFICATION = "BUNDLED_NOTIFICATION"
 
         // Collection of notification styles to back ArrayAdapter for Spinner.
         private val NOTIFICATION_STYLES = arrayOf(
-                BIG_TEXT_STYLE, BIG_PICTURE_STYLE, INBOX_STYLE, MESSAGING_STYLE, MEDIA_STYLE, PROGRESS_STYLE)
+                BIG_TEXT_STYLE,
+                BIG_PICTURE_STYLE,
+                INBOX_STYLE,
+                MESSAGING_STYLE,
+                MEDIA_STYLE,
+                PROGRESS_STYLE,
+                BUNDLED_NOTIFICATION
+        )
 
         private val NOTIFICATION_STYLES_DESCRIPTION = arrayOf(
                 "Demos reminder type app using BIG_TEXT_STYLE",
@@ -973,7 +1013,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 "Demos email type app using INBOX_STYLE",
                 "Demos messaging app using MESSAGING_STYLE + inline notification responses",
                 "Demos messaging app using MEDIA_STYLE",
-                "Demos messaging app using PROGRESS_STYLE"
+                "Demos messaging app using PROGRESS_STYLE",
+                "Demos messaging app using BUNDLED_NOTIFICATION"
         )
     }
 }
