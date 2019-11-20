@@ -97,9 +97,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             return
         }
 
-        val notificationStyle = NOTIFICATION_STYLES[mSelectedNotification]
-
-        when (notificationStyle) {
+        when (NOTIFICATION_STYLES[mSelectedNotification]) {
             BIG_TEXT_STYLE -> generateBigTextStyleNotification()
 
             BIG_PICTURE_STYLE -> generateBigPictureStyleNotification()
@@ -114,8 +112,107 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
             BUNDLED_NOTIFICATION -> generateBundledNotification()
 
+            SMART_NOTIFICATION -> generateSmartReply()
 
-        }// continue below
+        }
+    }
+
+    // Android 10 only
+    private fun generateSmartReply() {
+
+            val bigTextStyleReminderAppData = MockDatabase.getBigTextStyleData()
+
+            val notificationChannelId = NotificationUtil.createNotificationChannel(this, bigTextStyleReminderAppData)
+
+
+            // Create the RemoteInput.
+            val replyLabel = getString(R.string.reply_label)
+            val remoteInput = RemoteInput.Builder(BigPictureSocialIntentService.EXTRA_COMMENT)
+                    .setLabel(replyLabel)
+                    // List of quick response choices for any wearables paired with the phone
+//                .setChoices(bigPictureStyleSocialAppData.possiblePostResponses)
+                    .build()
+
+            // Pending intent =
+            //      API <24 (M and below): activity so the lock-screen presents the auth challenge
+            //      API 24+ (N and above): this should be a Service or BroadcastReceiver
+            val replyActionPendingIntent: PendingIntent
+
+            val mainIntent = Intent(this, BigPictureSocialMainActivity::class.java)
+
+            val mainPendingIntent = PendingIntent.getActivity(
+                    this,
+                    0,
+                    mainIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                val intent = Intent(this, BigPictureSocialIntentService::class.java)
+                intent.action = BigPictureSocialIntentService.ACTION_COMMENT
+                replyActionPendingIntent = PendingIntent.getService(this, 0, intent, 0)
+
+            } else {
+                replyActionPendingIntent = mainPendingIntent
+            }
+
+            val replyAction = NotificationCompat.Action.Builder(
+                    R.drawable.ic_reply_white_18dp,
+                    replyLabel,
+                    replyActionPendingIntent)
+                    .addRemoteInput(remoteInput)
+                    .setAllowGeneratedReplies(true)
+                    .build()
+
+
+            // 4. Create additional Actions (Intents) for the Notification.
+
+            // In our case, we create two additional actions: a Snooze action and a Dismiss action.
+            // Snooze Action.
+            val snoozeIntent = Intent(this, BigTextIntentService::class.java)
+            snoozeIntent.action = BigTextIntentService.ACTION_SNOOZE
+
+
+            val notificationCompatBuilder = NotificationCompat.Builder(
+                    applicationContext, notificationChannelId)
+
+            GlobalNotificationBuilder.setNotificationCompatBuilderInstance(notificationCompatBuilder)
+
+            val notification = notificationCompatBuilder
+                    // BIG_TEXT_STYLE sets title and content for API 16 (4.1 and after).
+                    // Title for API <16 (4.0 and below) devices.
+                    .setContentTitle("Title")
+                    .setColorized(true)
+                    .setStyle(BigTextStyle().bigText("").setBigContentTitle("how does this recipe looks"))
+                    // Content for API <24 (7.0 and below) devices.
+                    .setContentText("What are you cooking tonight? any suggestions")
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setLargeIcon(BitmapFactory.decodeResource(
+                            resources,
+                            R.drawable.alarm))
+                    .setDefaults(NotificationCompat.DEFAULT_ALL)
+                    // Set primary color (important for Wear 2.0 Notifications).
+                    .setColor(ContextCompat.getColor(applicationContext, R.color.colorPrimary))
+
+
+                    .setCategory(Notification.CATEGORY_MESSAGE)
+
+                    // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
+                    // 'importance' which is set in the NotificationChannel. The integers representing
+                    // 'priority' are different from 'importance', so make sure you don't mix them.
+                    .setPriority(bigTextStyleReminderAppData.priority)
+
+                    // Sets lock-screen visibility for 25 and below. For 26 and above, lock screen
+                    // visibility is set in the NotificationChannel.
+                    .setVisibility(bigTextStyleReminderAppData.channelLockscreenVisibility)
+
+                    // Adds additional actions specified above.
+                    .addAction(replyAction)
+                    .setAllowSystemGeneratedContextualActions(true)
+
+                    .build()
+
+            mNotificationManagerCompat!!.notify(NOTIFICATION_ID, notification)
     }
 
     private fun generateBundledNotification() {
@@ -145,7 +242,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             }
         }
 
-        //   is the only notification that appears on
+        //   Summary is the only notification that appears on
         //   Marshmallow and lower devices and should (you guessed it)
         //   summarize all of the individual notifications.
         //   This is an opportune time to use the InboxStyle,
@@ -780,16 +877,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
      * displays a basic BIG_TEXT_STYLE.
      */
     private fun generateMessagingStyleNotification() {
-
         Log.d(TAG, "generateMessagingStyleNotification()")
-
-        // Main steps for building a MESSAGING_STYLE notification:
-        //      0. Get your data
-        //      1. Create/Retrieve Notification Channel for O and beyond devices (26+)
-        //      2. Build the MESSAGING_STYLE
-        //      3. Set up main Intent for notification
-        //      4. Set up RemoteInput (users can input directly from notification)
-        //      5. Build and issue the notification
 
         // 0. Get your data (everything unique per Notification)
         val messagingStyleCommsAppData = MockDatabase.getMessagingStyleData(applicationContext)
@@ -814,7 +902,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                          *
                          * In our case, we use the same title.
                          */
-                .setConversationTitle(contentTitle)
+                .setConversationTitle("Group title")
+                .setGroupConversation(true)
+
 
         // Adds all Messages.
         // Note: Messages include the text, timestamp, and sender.
@@ -822,31 +912,11 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
             messagingStyle.addMessage(message)
         }
 
+
         messagingStyle.isGroupConversation = messagingStyleCommsAppData.isGroupConversation
 
         // 3. Set up main Intent for notification.
         val notifyIntent = Intent(this, MessagingMainActivity::class.java)
-
-        // When creating your Intent, you need to take into account the back state, i.e., what
-        // happens after your Activity launches and the user presses the back button.
-
-        // There are two options:
-        //      1. Regular activity - You're starting an Activity that's part of the application's
-        //      normal workflow.
-
-        //      2. Special activity - The user only sees this Activity if it's started from a
-        //      notification. In a sense, the Activity extends the notification by providing
-        //      information that would be hard to display in the notification itself.
-
-        // Even though this sample's MainActivity doesn't link to the Activity this Notification
-        // launches directly, i.e., it isn't part of the normal workflow, a chat app generally
-        // always links to individual conversations as part of the app flow, so we will follow
-        // option 1.
-
-        // For an example of option 2, check out the BIG_TEXT_STYLE example.
-
-        // For more information, check out our dev article:
-        // https://developer.android.com/training/notify-user/navigation.html
 
         val stackBuilder = TaskStackBuilder.create(this)
         // Adds the back stack
@@ -995,6 +1065,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         private val MEDIA_STYLE = "MEDIA_STYLE"
         private val PROGRESS_STYLE = "PROGRESS_STYLE"
         private val BUNDLED_NOTIFICATION = "BUNDLED_NOTIFICATION"
+        private val SMART_NOTIFICATION = "SMART_NOTIFICATION"
 
         // Collection of notification styles to back ArrayAdapter for Spinner.
         private val NOTIFICATION_STYLES = arrayOf(
@@ -1004,7 +1075,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 MESSAGING_STYLE,
                 MEDIA_STYLE,
                 PROGRESS_STYLE,
-                BUNDLED_NOTIFICATION
+                BUNDLED_NOTIFICATION,
+                SMART_NOTIFICATION
         )
 
         private val NOTIFICATION_STYLES_DESCRIPTION = arrayOf(
@@ -1014,7 +1086,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 "Demos messaging app using MESSAGING_STYLE + inline notification responses",
                 "Demos messaging app using MEDIA_STYLE",
                 "Demos messaging app using PROGRESS_STYLE",
-                "Demos messaging app using BUNDLED_NOTIFICATION"
+                "Demos messaging app using BUNDLED_NOTIFICATION",
+                "Demos messaging app using SMART_NOTIFICATION"
         )
     }
 }
