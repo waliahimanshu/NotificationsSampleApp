@@ -52,6 +52,10 @@ public class NotificationUtil {
                     new NotificationChannel(channelId, channelName, channelImportance);
             notificationChannel.setDescription(channelDescription);
             notificationChannel.enableVibration(channelEnableVibrate);
+            notificationChannel.setShowBadge(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                notificationChannel.setAllowBubbles(true);
+            }
             notificationChannel.setLockscreenVisibility(channelLockscreenVisibility);
 
             // Adds NotificationChannel to system. Attempting to create an existing notification

@@ -15,7 +15,8 @@
  limitations under the License.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.example.android.wearable.wear.wearnotifications"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.android.wearable.wear.wearnotifications"
           android:versionCode="1"
           android:versionName="1.0">
 
@@ -24,7 +25,8 @@
         android:icon="@drawable/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppThemeOverride">
+        android:theme="@style/AppThemeOverride"
+        tools:ignore="GoogleAppIndexingWarning">
 
         <activity android:name=".MainActivity">
             <intent-filter>
@@ -42,7 +44,11 @@
 
         <activity
             android:name=".handlers.BigPictureSocialMainActivity"
-            android:label="@string/title_activity_big_picture_main">
+            android:allowEmbedded="true"
+            android:documentLaunchMode="always"
+            android:resizeableActivity="true"
+            android:label="@string/title_activity_big_picture_main"
+            tools:ignore="UnusedAttribute">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".MainActivity"/>

@@ -324,6 +324,14 @@ public final class MockDatabase {
             mIndividualEmailSummary.add("Alex Chang -   Check this out...");
             mIndividualEmailSummary.add("Jane Johns -   Check in code?");
             mIndividualEmailSummary.add("John Smith -   Movies later....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
+            mIndividualEmailSummary.add("Himanshu  Walia -   Crushing it....");
 
             // If the phone is in "Do not disturb mode, the user will still be notified if
             // the user(s) is starred as a favorite.
@@ -427,8 +435,7 @@ public final class MockDatabase {
                             .setName("Famous Frank")
                             .setKey("9876543210")
                             .setUri("tel:9876543210")
-                            .setIcon(
-                                    IconCompat.createWithResource(context, R.drawable.famous_fryer))
+                            .setIcon(IconCompat.createWithResource(context, R.drawable.famous_fryer))
                             .build();
 
             Person participant2 =

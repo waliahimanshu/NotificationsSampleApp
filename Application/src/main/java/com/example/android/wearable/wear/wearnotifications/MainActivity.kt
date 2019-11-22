@@ -1,7 +1,9 @@
 package com.example.android.wearable.wear.wearnotifications
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
+import android.app.Person
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.media.session.PlaybackState
@@ -19,6 +21,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
 import androidx.core.app.TaskStackBuilder
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.example.android.wearable.wear.common.mock.MockDatabase
 import com.example.android.wearable.wear.common.util.NotificationUtil
 import com.example.android.wearable.wear.wearnotifications.handlers.*
@@ -114,7 +117,101 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
             SMART_NOTIFICATION -> generateSmartReply()
 
+            NOTIFICATION_BUBBLE -> generateNotificationBubble()
+
         }
+    }
+
+    @SuppressLint("NewApi")
+    private fun generateNotificationBubble() {
+
+        val bubbleMetadata = androidx.core.app.NotificationCompat.BubbleMetadata.Builder()
+                // The height of the expanded bubble.
+                .setDesiredHeight(this.resources.getDimensionPixelSize(R.dimen.bubble_height))
+
+                // The icon of the bubble.
+                // TODO: The icon is not displayed in Android Q Beta 2.
+                .setIcon(IconCompat.createWithAdaptiveBitmap(BitmapFactory.decodeResource(
+                        resources,
+                        R.drawable.wendy_wonda)
+                ))
+                .apply {
+                    // When the bubble is explicitly opened by the user, we can show the bubble automatically
+                    // in the expanded state. This works only when the app is in the foreground.
+                    // TODO: This does not yet work in Android Q Beta 2.
+
+                        setAutoExpandBubble(false)
+                        setSuppressNotification(false)
+
+//                        setSuppressInitialNotification(true)
+                }
+                // The Intent to be used for the expanded bubble.
+                .setIntent(
+                        PendingIntent.getActivity(
+                                this,
+                                1,
+                                // Launch BubbleActivity as the expanded bubble.
+                                Intent(this, BigPictureSocialMainActivity::class.java)
+                                        .setAction(Intent.ACTION_VIEW),
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                ).build()
+
+
+
+        val reminderAppData = MockDatabase.getBigPictureStyleData()
+
+        val notificationChannelId = NotificationUtil.createNotificationChannel(this, reminderAppData)
+
+        val notificationCompatBuilder = NotificationCompat.Builder(
+                applicationContext, notificationChannelId)
+
+        GlobalNotificationBuilder.setNotificationCompatBuilderInstance(notificationCompatBuilder)
+
+        // Create notification
+        val chatBot = Person.Builder()
+                .setBot(true)
+                .setName("BubbleBot")
+                .setImportant(true)
+                .build().uri
+
+        val notification = notificationCompatBuilder
+                // BIG_TEXT_STYLE sets title and content for API 16 (4.1 and after).
+                // Title for API <16 (4.0 and below) devices.
+                .setContentTitle("Title")
+                .setColorized(true)
+                .setBadgeIconType(NotificationCompat.BADGE_ICON_LARGE)
+                .setStyle(BigTextStyle().bigText("").setBigContentTitle("how does this recipe looks"))
+                // Content for API <24 (7.0 and below) devices.
+                .setContentText("What are you cooking tonight? any suggestions")
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setLargeIcon(BitmapFactory.decodeResource(
+                        resources,
+                        R.drawable.alarm))
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                // Set primary color (important for Wear 2.0 Notifications).
+                .setColor(ContextCompat.getColor(applicationContext, R.color.colorPrimary))
+
+                .setBubbleMetadata(bubbleMetadata)
+                .addPerson(chatBot)
+                .setCategory(Notification.CATEGORY_MESSAGE)
+
+                // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
+                // 'importance' which is set in the NotificationChannel. The integers representing
+                // 'priority' are different from 'importance', so make sure you don't mix them.
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+
+                // Sets lock-screen visibility for 25 and below. For 26 and above, lock screen
+                // visibility is set in the NotificationChannel.
+                .setVisibility(reminderAppData.channelLockscreenVisibility)
+
+                // Adds additional actions specified above.
+                .setAllowSystemGeneratedContextualActions(true)
+
+                .build()
+
+        mNotificationManagerCompat!!.notify(NOTIFICATION_ID, notification)
+
     }
 
     // Android 10 only
@@ -183,6 +280,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                     // Title for API <16 (4.0 and below) devices.
                     .setContentTitle("Title")
                     .setColorized(true)
+                    .setBadgeIconType(NotificationCompat.BADGE_ICON_LARGE)
                     .setStyle(BigTextStyle().bigText("").setBigContentTitle("how does this recipe looks"))
                     // Content for API <24 (7.0 and below) devices.
                     .setContentText("What are you cooking tonight? any suggestions")
@@ -219,7 +317,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         val mediaStyleData = MockDatabase.getMediaStyleData()
         val notificationChannelId = NotificationUtil.createNotificationChannel(this, mediaStyleData)
 
-        val builder = NotificationCompat.Builder(this, notificationChannelId).apply {
+        val builder1 = NotificationCompat.Builder(this, notificationChannelId).apply {
+
             setSmallIcon(R.drawable.ic_launcher)
             .setLargeIcon(BitmapFactory.decodeResource(
                             resources,
@@ -227,6 +326,12 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                     .priority = NotificationCompat.PRIORITY_LOW
             color = ContextCompat.getColor(applicationContext, R.color.colorPrimary)
 
+        }
+
+        val builder = NotificationCompat.Builder(this, notificationChannelId).apply {
+            setSmallIcon(R.drawable.ic_launcher)
+                    .setContentTitle("title")
+                    .setContentText("text")
         }
 
         NotificationManagerCompat.from(this).apply {
@@ -450,30 +555,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         // 3. Set up main Intent for notification.
         val notifyIntent = Intent(this, BigTextMainActivity::class.java)
-
-        // When creating your Intent, you need to take into account the back state, i.e., what
-        // happens after your Activity launches and the user presses the back button.
-
-        // There are two options:
-        //      1. Regular activity - You're starting an Activity that's part of the application's
-        //      normal workflow.
-
-        //      2. Special activity - The user only sees this Activity if it's started from a
-        //      notification. In a sense, the Activity extends the notification by providing
-        //      information that would be hard to display in the notification itself.
-
-        // For the BIG_TEXT_STYLE notification, we will consider the activity launched by the main
-        // Intent as a special activity, so we will follow option 2.
-
-        // For an example of option 1, check either the MESSAGING_STYLE or BIG_PICTURE_STYLE
-        // examples.
-
-        // For more information, check out our dev article:
-        // https://developer.android.com/training/notify-user/navigation.html
-
-        // Sets the Activity to start in a new, empty task
         notifyIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-
         val notifyPendingIntent = PendingIntent.getActivity(
                 this,
                 0,
@@ -481,10 +563,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-
-        // 4. Create additional Actions (Intents) for the Notification.
-
-        // In our case, we create two additional actions: a Snooze action and a Dismiss action.
         // Snooze Action.
         val snoozeIntent = Intent(this, BigTextIntentService::class.java)
         snoozeIntent.action = BigTextIntentService.ACTION_SNOOZE
@@ -524,7 +602,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         val notification = notificationCompatBuilder
                 // BIG_TEXT_STYLE sets title and content for API 16 (4.1 and after).
-                .setStyle(bigTextStyle)
+//                .setStyle(bigTextStyle)
                 // Title for API <16 (4.0 and below) devices.
                 .setContentTitle(bigTextStyleReminderAppData.contentTitle)
                 // Content for API <24 (7.0 and below) devices.
@@ -579,13 +657,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
         Log.d(TAG, "generateBigPictureStyleNotification()")
 
-        // Main steps for building a BIG_PICTURE_STYLE notification:
-        //      0. Get your data
-        //      1. Create/Retrieve Notification Channel for O and beyond devices (26+)
-        //      2. Build the BIG_PICTURE_STYLE
-        //      3. Set up main Intent for notification
-        //      4. Set up RemoteInput, so users can input (keyboard and voice) from notification
-        //      5. Build and issue the notification
 
         // 0. Get your data (everything unique per Notification).
         val bigPictureStyleSocialAppData = MockDatabase.getBigPictureStyleData()
@@ -659,21 +730,19 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         // Pending intent =
         //      API <24 (M and below): activity so the lock-screen presents the auth challenge
         //      API 24+ (N and above): this should be a Service or BroadcastReceiver
-        val replyActionPendingIntent: PendingIntent
+        val pendingIntent: PendingIntent
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             val intent = Intent(this, BigPictureSocialIntentService::class.java)
             intent.action = BigPictureSocialIntentService.ACTION_COMMENT
-            replyActionPendingIntent = PendingIntent.getService(this, 0, intent, 0)
+            pendingIntent = PendingIntent.getService(this, 0, intent, 0)
 
         } else {
-            replyActionPendingIntent = mainPendingIntent
+            pendingIntent = mainPendingIntent
         }
 
-        val replyAction = NotificationCompat.Action.Builder(
-                R.drawable.ic_reply_white_18dp,
-                replyLabel,
-                replyActionPendingIntent)
+        val replyAction: Action = NotificationCompat.Action.Builder(
+                R.drawable.ic_reply_white_18dp, replyLabel, pendingIntent)
                 .addRemoteInput(remoteInput)
                 .build()
 
@@ -746,14 +815,6 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         Log.d(TAG, "generateInboxStyleNotification()")
 
 
-        // Main steps for building a INBOX_STYLE notification:
-        //      0. Get your data
-        //      1. Create/Retrieve Notification Channel for O and beyond devices (26+)
-        //      2. Build the INBOX_STYLE
-        //      3. Set up main Intent for notification
-        //      4. Build and issue the notification
-
-        // 0. Get your data (everything unique per Notification).
         val inboxStyleEmailAppData = MockDatabase.getInboxStyleData()
 
         // 1. Create/Retrieve Notification Channel for O and beyond devices (26+).
@@ -774,29 +835,9 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         // 3. Set up main Intent for notification.
         val mainIntent = Intent(this, InboxMainActivity::class.java)
 
-        // When creating your Intent, you need to take into account the back state, i.e., what
-        // happens after your Activity launches and the user presses the back button.
-
-        // There are two options:
-        //      1. Regular activity - You're starting an Activity that's part of the application's
-        //      normal workflow.
-
-        //      2. Special activity - The user only sees this Activity if it's started from a
-        //      notification. In a sense, the Activity extends the notification by providing
-        //      information that would be hard to display in the notification itself.
-
-        // Even though this sample's MainActivity doesn't link to the Activity this Notification
-        // launches directly, i.e., it isn't part of the normal workflow, a eamil app generally
-        // always links to individual emails as part of the app flow, so we will follow option 1.
-
-        // For an example of option 2, check out the BIG_TEXT_STYLE example.
-
-        // For more information, check out our dev article:
-        // https://developer.android.com/training/notify-user/navigation.html
-
         val stackBuilder = TaskStackBuilder.create(this)
         // Adds the back stack.
-        stackBuilder.addParentStack(InboxMainActivity::class.java!!)
+        stackBuilder.addParentStack(InboxMainActivity::class.java)
         // Adds the Intent to the top of the stack.
         stackBuilder.addNextIntent(mainIntent)
         // Gets a PendingIntent containing the entire back stack.
@@ -1066,6 +1107,7 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
         private val PROGRESS_STYLE = "PROGRESS_STYLE"
         private val BUNDLED_NOTIFICATION = "BUNDLED_NOTIFICATION"
         private val SMART_NOTIFICATION = "SMART_NOTIFICATION"
+        private val NOTIFICATION_BUBBLE = "NOTIFICATION_BUBBLE"
 
         // Collection of notification styles to back ArrayAdapter for Spinner.
         private val NOTIFICATION_STYLES = arrayOf(
@@ -1076,7 +1118,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 MEDIA_STYLE,
                 PROGRESS_STYLE,
                 BUNDLED_NOTIFICATION,
-                SMART_NOTIFICATION
+                SMART_NOTIFICATION,
+                NOTIFICATION_BUBBLE
         )
 
         private val NOTIFICATION_STYLES_DESCRIPTION = arrayOf(
@@ -1087,7 +1130,8 @@ class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
                 "Demos messaging app using MEDIA_STYLE",
                 "Demos messaging app using PROGRESS_STYLE",
                 "Demos messaging app using BUNDLED_NOTIFICATION",
-                "Demos messaging app using SMART_NOTIFICATION"
+                "Demos messaging app using SMART_NOTIFICATION",
+                "Demos messaging app using NOTIFICATION_BUBBLE"
         )
     }
 }
